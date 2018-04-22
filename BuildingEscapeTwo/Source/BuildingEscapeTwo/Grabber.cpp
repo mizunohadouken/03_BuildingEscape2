@@ -59,8 +59,9 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (!PhysicsHandle) { return; }
 	// if the physics handle is attached
-		// move the object that we're holding
+	// move the object that we're holding
 	if (PhysicsHandle->GrabbedComponent)
 	{
 		PhysicsHandle->SetTargetLocation(GetReachLineEnd());
@@ -79,14 +80,7 @@ void UGrabber::Grab()
 	// If we hit then attach a physics handle
 	if (ActorHit)
 	{
-	/*	PhysicsHandle->GrabComponent(ComponentToGrab,
-			NAME_None,
-			ComponentToGrab->GetOwner()->GetActorLocation(),
-			true);*/
-	/*	PhysicsHandle->GrabComponentAtLocation(ComponentToGrab,
-												NAME_None,
-												ComponentToGrab->GetOwner()->GetActorLocation()
-												);*/
+		if (!PhysicsHandle) { return; }
 //		PhysicsHandle->GrabComponent(ComponentToGrab, NAME_None, ComponentToGrab->GetOwner()->GetActorLocation(), true);
 		PhysicsHandle->GrabComponentAtLocationWithRotation(ComponentToGrab, NAME_None, ComponentToGrab->GetOwner()->GetActorLocation(), FRotator(0.0f , 0.0f, 0.0f));
 
@@ -112,7 +106,7 @@ FVector UGrabber::GetReachLineEnd() const
 
 void UGrabber::Release()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Button Released"));
+	if (!PhysicsHandle) { return; }
 	PhysicsHandle->ReleaseComponent();
 }
 
