@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
+#include "Components/PrimitiveComponent.h"
+
 #include "Grabber.h"
 
 
@@ -17,15 +19,12 @@ UGrabber::UGrabber()
 	// ...
 }
 
-
 // Called when the game starts
 void UGrabber::BeginPlay()
 {
 	Super::BeginPlay();
 
 	// ...
-	object_name = GetOwner()->GetName();
-
 	FindPhysicsHandleComponent();
 	SetupInputComponent();
 }
@@ -36,10 +35,8 @@ void UGrabber::SetupInputComponent()
 	InputComponent = GetOwner()->FindComponentByClass<UInputComponent>();
 	if (InputComponent)
 	{
-		/// Bind input axis
 		InputComponent->BindAction("Grab", IE_Pressed, this, &UGrabber::Grab);
 		InputComponent->BindAction("Grab", IE_Released, this, &UGrabber::Release);
-
 	}
 	else
 	{
@@ -47,31 +44,27 @@ void UGrabber::SetupInputComponent()
 	}
 }
 
-
 /// Look for attached physics handle
 void UGrabber::FindPhysicsHandleComponent()
 {
 	PhysicsHandle = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
-	if (PhysicsHandle)
-	{
-		// PhysicsHandle found
-		UE_LOG(LogTemp, Warning, TEXT("UPhysicsHandleComponent found on %s"), *object_name);
-	}
-	else
+	if (PhysicsHandle == nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No UPhysicsHandleComponent found on %s"), *object_name);
 	}
 }
 
-
 // Called every frame
 void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
+
 	// if the physics handle is attached
 		// move the object that we're holding
-	
+	if (PhysicsHandle->GrabbedComponent)
+	{
+		PhysicsHandle->SetTargetLocation(GetReachLineEnd());
+	}
 }
 
 void UGrabber::Grab()
@@ -79,38 +72,63 @@ void UGrabber::Grab()
 	UE_LOG(LogTemp, Warning, TEXT("Button Pressed"));
 
 	// Line trace and try and reach any actors with physics body collision channel set 
-	GetFirstPhysicsBodyInReach();
+	auto HitResult = GetFirstPhysicsBodyInReach();
+	auto ComponentToGrab = HitResult.GetComponent();
+	auto ActorHit = HitResult.GetActor();
 
 	// If we hit then attach a physics handle
+	if (ActorHit)
+	{
+	/*	PhysicsHandle->GrabComponent(ComponentToGrab,
+			NAME_None,
+			ComponentToGrab->GetOwner()->GetActorLocation(),
+			true);*/
+		PhysicsHandle->GrabComponentAtLocation(ComponentToGrab,
+												NAME_None,
+												ComponentToGrab->GetOwner()->GetActorLocation()
+												);
+											
+	}
+}
+
+FVector UGrabber::GetReachLineStart() const
+{
+	FVector PlayerViewLocation;
+	FRotator PlayerViewRotation;
+	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(PlayerViewLocation, PlayerViewRotation);
+	return PlayerViewLocation;
+}
+
+FVector UGrabber::GetReachLineEnd() const
+{
+	FVector PlayerViewLocation;
+	FRotator PlayerViewRotation;
+	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(PlayerViewLocation, PlayerViewRotation);
+
+	return PlayerViewLocation + PlayerViewRotation.Vector() * Reach;
 }
 
 void UGrabber::Release()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Button Released"));
-
-	// Release physics handle
+	PhysicsHandle->ReleaseComponent();
 }
 
 FHitResult UGrabber::GetFirstPhysicsBodyInReach() const
 {
-	// Get player view point this tick
-	FVector PlayerViewLocation;
-	FRotator PlayerViewRotation;
-	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(PlayerViewLocation, PlayerViewRotation);
-
-	FVector LineTraceEnd = PlayerViewLocation + PlayerViewRotation.Vector() * Reach;
-
 	// Draw a blue trace in world
 	//	DrawDebugLine(GetWorld(), PlayerViewLocation, LineTraceEnd,	FColor(0, 0, 255), false,0.0f, 0.0f, 10.0f);
 
 	/// Ray-cast out to reach distance
 	FHitResult hit;
 	FCollisionQueryParams TraceParams(FName(TEXT("")), false, GetOwner());
+
 	GetWorld()->LineTraceSingleByObjectType(hit,
-		PlayerViewLocation,
-		LineTraceEnd,
+		GetReachLineStart(),
+		GetReachLineEnd(),
 		FCollisionObjectQueryParams(ECollisionChannel::ECC_PhysicsBody),
 		TraceParams);
+
 
 	// See what we hit
 	AActor* ActorHit = hit.GetActor();
@@ -119,5 +137,5 @@ FHitResult UGrabber::GetFirstPhysicsBodyInReach() const
 		UE_LOG(LogTemp, Warning, TEXT("%s has been hit"), *ActorHit->GetName());
 	}
 
-	return FHitResult();
+	return hit;
 }
