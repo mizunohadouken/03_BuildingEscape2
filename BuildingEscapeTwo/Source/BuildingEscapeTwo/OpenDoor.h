@@ -25,6 +25,7 @@ protected:
 
 	void OpenDoor();
 	void CloseDoor();
+	float GetTotalMassOfActorsOnPlate();
 
 public:	
 	// Called every frame
@@ -34,14 +35,14 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	float OpenAngle = -75.0f;
 
-	UPROPERTY(VisibleAnywhere)
-	AActor* ActorThatOpens;
-
 	UPROPERTY(EditAnywhere)
 	ATriggerVolume* PressurePlate;
 	
 	UPROPERTY(EditAnywhere)
 	float DoorCloseDelay = 1.25f;
+
+	UPROPERTY(EditAnywhere)
+	float ActivationMass = 21.0f; // in kilograms
 
 	float LastDoorOpenTime;
 	AActor *Owner;
